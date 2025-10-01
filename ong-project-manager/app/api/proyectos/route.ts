@@ -1,24 +1,52 @@
-import { NextResponse } from "next/server"
 
+
+import { NextResponse } from 'next/server';
+import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+
+// GET: Obtener todos los proyectos
+export async function GET() {
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM proyectos');
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error('[API_PROYECTOS_GET] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ error: 'Error al obtener los proyectos', details: errorMessage }, { status: 500 });
+  }
+}
+
+// POST: Crear un nuevo proyecto
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const body = await request.json();
+    const { nombre, descripcion, fecha_inicio, fecha_fin, estado } = body;
 
-    console.log("[API] Proyecto recibido:", body)
-
-    // Aquí iría la lógica para guardar en la base de datos
-    // Por ahora, simulamos una respuesta exitosa
-
-    const mockResponse = {
-      success: true,
-      id: `proyecto-${Date.now()}`,
-      message: "Proyecto creado exitosamente",
-      data: body,
+    if (!nombre) {
+      return NextResponse.json({ error: "El campo 'nombre' es obligatorio" }, { status: 400 });
     }
 
-    return NextResponse.json(mockResponse)
+    const query = "\n      INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, estado)\n      VALUES (?, ?, ?, ?, ?)\n    ";
+    
+    const [result] = await pool.query(query, [nombre, descripcion, fecha_inicio, fecha_fin, estado]);
+    
+    // mysql2/promise returns an OkPacket which has an insertId property
+    const insertId = (result as any).insertId;
+
+    const newProject = {
+      id: insertId,
+      nombre,
+      descripcion,
+      fecha_inicio,
+      fecha_fin,
+      estado
+    };
+
+    return NextResponse.json(newProject, { status: 201 });
+
   } catch (error) {
-    console.error("[API] Error al crear proyecto:", error)
-    return NextResponse.json({ success: false, error: "Error al crear proyecto" }, { status: 500 })
+    console.error('[API_PROYECTOS_POST] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ error: 'Error al crear el proyecto', details: errorMessage }, { status: 500 });
   }
 }
