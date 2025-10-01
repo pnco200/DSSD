@@ -95,12 +95,13 @@ export default function CreateProjectForm() {
     setIsLoading(true)
 
     const ongId = getOngIdFromToken()
-    const payload = etapas.map((etapa) => ({
+    const parsedEtapas = etapas.map((etapa) => ({
       ...etapa,
-      proyecto: projectId,
-      ong_responsable: null, // Se asigna después
+      ong_responsable_id: null,
       is_completed: false,
     }))
+
+    const payload = { nombre: projectData.nombre, etapas: parsedEtapas, ong_responsable_id: 1, fecha_inicio: projectData.fecha_inicio, fecha_fin: projectData.fecha_fin, id: projectId }
 
     console.log(" Enviando etapas al backend:", payload)
 
