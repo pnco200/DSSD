@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 const BONITA_URL = "http://localhost:8080/bonita"
 const BONITA_USER = "walter.bates"
 const BONITA_PASS = "bpm"
-const PROCESS_ID = "7482078796860500853" // tu processId real
+const PROCESS_ID = "8531611139190718587" // tu processId real
 
 // Helper para login en Bonita y obtener cookies + token
 async function bonitaLogin() {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     // 1. Login en Bonita
     const { cookies, token } = await bonitaLogin()
 
-    
+
     // 2. Instanciar proceso con variables
     const bonitaRes = await fetch(
       `${BONITA_URL}/API/bpm/process/${PROCESS_ID}/instantiation`,
@@ -44,25 +44,19 @@ export async function POST(request: Request) {
           "X-Bonita-API-Token": token,
         },
         body: JSON.stringify({
-          variables: [
-            {
-              name: "proyectoNuevo",
-              value: {
-  "nombre": "Proyecto mejora de escuela",
-  "fecha_inicio": "2025-10-01T00:00:00Z",
-  "fecha_fin": "2026-01-01T00:00:00Z",
-  "ong_responsable_id": 1,
-  "etapas": [
-    {
-      "nombre": "Compra de materiales",
-      "descripcion": "Adquisición de ladrillos y cemento",
-      //"is_completed": false,
-      //"ong_responsable": { "id": 2, "nombre": "ONG Colaboradora A" }
-    }
-  ]
-}
-            },
-          ],
+  proyectoInput1: {
+    nombre: body.nombre ?? "Proyecto mejora de escuela",
+    en_ejecucion: body.en_ejecucion ?? false,
+    fecha_inicio: new Date(body.fecha_inicio ?? "2025-10-01T00:00:00Z").toISOString(),
+    fecha_fin: new Date(body.fecha_fin ?? "2026-01-01T00:00:00Z").toISOString(),
+    etapas: [
+      {
+        nombre: "Compra de materiales",
+        descripcion: "Adquisición de ladrillos y cemento"
+        // agrega aquí cualquier otro campo obligatorio del BDM Etapa
+      }
+    ]
+  }
         }),
       }
     )
