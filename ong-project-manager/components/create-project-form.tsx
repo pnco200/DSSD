@@ -14,6 +14,7 @@ interface ProjectData {
   nombre: string
   fecha_inicio: string
   fecha_fin: string
+  descripcion: string
 }
 
 interface EtapaData {
@@ -27,6 +28,7 @@ export default function CreateProjectForm() {
     nombre: "",
     fecha_inicio: "",
     fecha_fin: "",
+    descripcion:""
   })
   const [projectId, setProjectId] = useState<string | null>(null)
   const [etapas, setEtapas] = useState<EtapaData[]>([{ nombre: "", descripcion: "" }])
@@ -40,6 +42,11 @@ export default function CreateProjectForm() {
 
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (projectData.fecha_fin < projectData.fecha_inicio) {
+      alert("La fecha de fin no puede ser anterior a la fecha de inicio.")
+      return
+    }
+
     setIsLoading(true)
 
     const ongId = getOngIdFromToken()
@@ -63,9 +70,8 @@ export default function CreateProjectForm() {
       const data = await response.json()
       console.log(" Respuesta del backend:", data)
 
-      // Simular que el backend devuelve el ID del proyecto
-      const mockProjectId = data.id || "proyecto-123"
-      setProjectId(mockProjectId)
+
+      setProjectId(data.id_proyecto)
       setStep("stages")
     } catch (error) {
       console.error(" Error al crear proyecto:", error)
@@ -101,7 +107,7 @@ export default function CreateProjectForm() {
       is_completed: false,
     }))
 
-    const payload = { nombre: projectData.nombre, etapas: parsedEtapas, ong_responsable_id: 1, fecha_inicio: projectData.fecha_inicio, fecha_fin: projectData.fecha_fin, id: projectId }
+    const payload = { nombre: projectData.nombre, descripcion:projectData.descripcion, etapas: parsedEtapas, ong_responsable_id: 1, fecha_inicio: projectData.fecha_inicio, fecha_fin: projectData.fecha_fin, id_proyecto: projectId }
 
     console.log(" Enviando etapas al backend:", payload)
 
@@ -120,7 +126,7 @@ export default function CreateProjectForm() {
       // Resetear formulario
       alert("¡Proyecto y etapas creados exitosamente!")
       setStep("project")
-      setProjectData({ nombre: "", fecha_inicio: "", fecha_fin: "" })
+      setProjectData({ nombre: "", fecha_inicio: "", fecha_fin: "", descripcion:"" })
       setEtapas([{ nombre: "", descripcion: "" }])
       setProjectId(null)
     } catch (error) {
@@ -136,11 +142,10 @@ export default function CreateProjectForm() {
       <div className="flex items-center justify-center gap-4">
         <div className="flex items-center gap-2">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full border-4 font-bold ${
-              step === "project"
+            className={`flex h-10 w-10 items-center justify-center rounded-full border-4 font-bold ${step === "project"
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-primary bg-card text-primary"
-            }`}
+              }`}
           >
             1
           </div>
@@ -151,11 +156,10 @@ export default function CreateProjectForm() {
         <div className="h-1 w-16 bg-border" />
         <div className="flex items-center gap-2">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full border-4 font-bold ${
-              step === "stages"
+            className={`flex h-10 w-10 items-center justify-center rounded-full border-4 font-bold ${step === "stages"
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground"
-            }`}
+              }`}
           >
             2
           </div>
@@ -185,6 +189,20 @@ export default function CreateProjectForm() {
                   required
                   className="border-2 border-primary bg-card"
                   placeholder="Ingresa el nombre del proyecto"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" className="text-sm font-bold uppercase text-primary">
+                  Descripcion del Proyecto
+                </Label>
+                <Input
+                  id="nombre"
+                  value={projectData.descripcion}
+                  onChange={(e) => setProjectData({ ...projectData, descripcion: e.target.value })}
+                  required
+                  className="border-2 border-primary bg-card"
+                  placeholder="Ingresa la descripcion del proyecto"
                 />
               </div>
 

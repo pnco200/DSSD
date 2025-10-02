@@ -1,0 +1,3 @@
+# Comando para levantar el contenedor de Docker con la base de datos MySQL
+
+docker run --name ong-mysql-db -e MYSQL_ROOT_PASSWORD=my-secret-pw -e MYSQL_DATABASE=ong_db -e MYSQL_USER=ong_user -e MYSQL_PASSWORD=ong_password -p 3306:3306 -d mysql:8.0
