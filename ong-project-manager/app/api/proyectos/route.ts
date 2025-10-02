@@ -32,15 +32,18 @@ export async function POST(request: Request) {
     
     // mysql2/promise returns an OkPacket which has an insertId property
     const insertId = (result as any).insertId;
+    const ong_responsable_id=null
 
     const newProject = {
-      id: insertId,
+      id_proyecto: insertId,
       nombre,
       descripcion,
       fecha_inicio,
       fecha_fin,
+      ong_responsable_id,
       estado
     };
+    
 
     return NextResponse.json(newProject, { status: 201 });
 

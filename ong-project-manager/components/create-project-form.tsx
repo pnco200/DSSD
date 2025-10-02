@@ -63,9 +63,8 @@ export default function CreateProjectForm() {
       const data = await response.json()
       console.log(" Respuesta del backend:", data)
 
-      // Simular que el backend devuelve el ID del proyecto
-      const mockProjectId = data.id || "proyecto-123"
-      setProjectId(mockProjectId)
+    
+      setProjectId(data.id_proyecto)
       setStep("stages")
     } catch (error) {
       console.error(" Error al crear proyecto:", error)
@@ -101,7 +100,7 @@ export default function CreateProjectForm() {
       is_completed: false,
     }))
 
-    const payload = { nombre: projectData.nombre, etapas: parsedEtapas, ong_responsable_id: 1, fecha_inicio: projectData.fecha_inicio, fecha_fin: projectData.fecha_fin, id: projectId }
+    const payload = { nombre: projectData.nombre, etapas: parsedEtapas, ong_responsable_id: 1, fecha_inicio: projectData.fecha_inicio, fecha_fin: projectData.fecha_fin, id_proyecto: projectId }
 
     console.log(" Enviando etapas al backend:", payload)
 
