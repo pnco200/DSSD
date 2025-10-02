@@ -20,15 +20,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nombre, descripcion, fecha_inicio, fecha_fin, estado } = body;
+    const { nombre, descripcion, fecha_inicio, fecha_fin } = body;
 
     if (!nombre) {
       return NextResponse.json({ error: "El campo 'nombre' es obligatorio" }, { status: 400 });
     }
 
-    const query = "\n      INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, estado)\n      VALUES (?, ?, ?, ?, ?)\n    ";
+    const query = "\n      INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, en_ejecucion)\n      VALUES (?, ?, ?, ?, ?)\n    ";
     
-    const [result] = await pool.query(query, [nombre, descripcion, fecha_inicio, fecha_fin, estado]);
+    const [result] = await pool.query(query, [nombre, descripcion, fecha_inicio, fecha_fin, false]);
     
     // mysql2/promise returns an OkPacket which has an insertId property
     const insertId = (result as any).insertId;
@@ -41,8 +41,7 @@ export async function POST(request: Request) {
       fecha_inicio,
       fecha_fin,
       ong_responsable_id,
-      estado
-    };
+      en_ejecucion: false};
     
 
     return NextResponse.json(newProject, { status: 201 });

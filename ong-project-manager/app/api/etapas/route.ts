@@ -175,7 +175,8 @@ type EtapaIn = {
 }
 type ProyectoIn = {
   id_proyecto: number
-  nombre: string
+  nombre: string,
+  descripcion: string,
   fecha_inicio: string
   fecha_fin: string
   ong_responsable_id: number
@@ -187,9 +188,10 @@ function toBool(v: boolean | "true" | "false"): boolean {
 }
 function normalizeProyecto(input: any): ProyectoIn {
   if (!input || typeof input !== "object") throw new Error("Payload inválido: se esperaba un objeto")
-  const { id_proyecto, nombre, fecha_inicio, fecha_fin, ong_responsable_id, etapas } = input
+  const { id_proyecto, nombre, fecha_inicio, fecha_fin, ong_responsable_id, etapas, descripcion } = input
   if (!id_proyecto) throw new Error("Falta 'id_proyecto' - el proyecto debe estar creado primero")
   if (!nombre) throw new Error("Falta 'nombre'")
+  if (!descripcion) throw new Error("Falta 'descripcion'")
   if (!fecha_inicio) throw new Error("Falta 'fecha_inicio'")
   if (!fecha_fin) throw new Error("Falta 'fecha_fin'")
   if (typeof ong_responsable_id !== "number") throw new Error("'ong_responsable_id' debe ser número")
@@ -212,7 +214,7 @@ function normalizeProyecto(input: any): ProyectoIn {
     }
   })
 
-  return { id_proyecto,nombre, fecha_inicio, fecha_fin, ong_responsable_id, etapas: etapasOut }
+  return { id_proyecto,nombre,descripcion,fecha_inicio, fecha_fin, ong_responsable_id, etapas: etapasOut }
 }
 
 // ---------- Handler ----------
@@ -245,6 +247,7 @@ export async function POST(request: Request) {
         nombre: etapa.nombre,
         id_ong_ejecutora: etapa.ong_responsable_id
       });
+      etapa.id_etapa = etapaId; // Actualizar el id_etapa en el objeto etapa
     }
 
     connection.release();

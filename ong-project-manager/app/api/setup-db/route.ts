@@ -23,7 +23,7 @@ export async function GET() {
         id_ong_lider INT NULL ,
         fecha_inicio DATE,
         fecha_fin DATE,
-        estado VARCHAR(50),
+        en_ejecucion BOOLEAN DEFAULT FALSE,
         FOREIGN KEY (id_ong_lider) REFERENCES ongs(id_ong)
       );
     `);
@@ -57,10 +57,10 @@ export async function GET() {
 
     // Insertar datos de ejemplo en proyectos - AHORA con id_ong_lider
     await connection.query(`
-      INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, estado, id_ong_lider) VALUES
-      ('Proyecto Alpha', 'Descripción del Proyecto Alpha', '2024-01-15', '2024-06-30', 'En curso', 1),
-      ('Iniciativa Beta', 'Descripción de la Iniciativa Beta', '2024-03-01', '2024-09-15', 'Planificado', 1),
-      ('Campaña Gamma', 'Descripción de la Campaña Gamma', '2023-11-10', '2024-02-20', 'Completado', 2);
+      INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, en_ejecucion, id_ong_lider) VALUES
+      ('Proyecto Alpha', 'Descripción del Proyecto Alpha', '2024-01-15', '2024-06-30', false, 1),
+      ('Iniciativa Beta', 'Descripción de la Iniciativa Beta', '2024-03-01', '2024-09-15', false, 1),
+      ('Campaña Gamma', 'Descripción de la Campaña Gamma', '2023-11-10', '2024-02-20', false, 2);
     `);
 
     // Insertar datos de ejemplo en etapas
