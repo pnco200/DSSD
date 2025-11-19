@@ -9,7 +9,7 @@ export type AuthPayload = {
 };
 
 export async function authUser(): Promise<AuthPayload | null> {
-  const cookieStore = await cookies(); // 👈 obligatorio
+  const cookieStore = await cookies(); 
   const token = cookieStore.get("auth")?.value;
 
   if (!token) return null;

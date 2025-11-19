@@ -244,17 +244,7 @@ export async function POST(request: Request) {
     body.ong_responsable_id = usuario.id_ong;
     const proyecto = normalizeProyecto(body)
 
-    // 🔹 Log para depuración
-  console.log("[DEBUG] Proyecto que se enviará a Bonita:", {
-    nombre: proyecto.nombre,
-    id_proyecto: proyecto.id_proyecto,
-    ong_responsable_id: proyecto.ong_responsable_id,
-    etapas: proyecto.etapas.map(e => ({
-      id_etapa: e.id_etapa,
-      nombre: e.nombre,
-      ong_responsable_id: e.ong_responsable_id,
-    })),
-  });
+    
     // 1. GUARDAR SOLO LAS ETAPAS en MySQL (el proyecto ya existe)
     connection = await pool.getConnection();
     // Guardar las etapas

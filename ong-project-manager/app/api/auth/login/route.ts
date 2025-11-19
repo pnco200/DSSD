@@ -30,12 +30,11 @@ export async function POST(request: Request) {
 
       const user = users[0];
 
-      // SIN bcrypt, porque tenés passwords en texto plano
       if (password !== user.password) {
         return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
       }
 
-      // Datos que irán en el JWT (no sensibles)
+
       const payload = {
         id_usuario: user.id_usuario,
         username: user.username,
@@ -60,7 +59,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // 🔥 Solo cookie HttpOnly — NADA de localStorage ni devolver el token
+  
       resp.cookies.set("auth", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       ong_responsable_id,
       en_ejecucion: false
     };
-    console.log("[DEBUG] Body de newProject:", newProject);
+    
 
     return NextResponse.json(newProject, { status: 201 });
 
