@@ -1,47 +1,63 @@
 import { NextResponse } from "next/server";
 import pool from '@/lib/db';
+import { loginToBonita } from "@/lib/bonitaLogin";
+import { authUser } from "@/lib/auth";
 
 const BONITA_URL = process.env.BONITA_URL ?? "http://localhost:8080/bonita"
-const BONITA_USER = process.env.BONITA_USER ?? "walter.bates"
-const BONITA_PASS = process.env.BONITA_PASS ?? "bpm"
 // 🔁 Now we resolve the process by NAME, not fixed ID
 const PROCESS_NAME = process.env.BONITA_PROCESS_NAME ?? "MiProceso"
 const TASK_NAME = process.env.BONITA_TASK_NAME ?? "tarea1"
 
 type BonitaSession = { user_id: string; user_name: string; tenant_id: string }
 
-/*
-{
-    "nombre": "Proyecto mejora de escuela",
-    "fecha_inicio": "2025-10-01T00:00:00Z",
-    "fecha_fin": "2026-01-01T00:00:00Z",
-    "ong_responsable_id": 1,
-    "etapas": [
-      { "id": 1, "ong_responsable_id": 2, "nombre": "Compra de materiales", "descripcion": "Adquisición de ladrillos y cemento", "is_completed": "false" },
-      { "id": 2, "ong_responsable_id": null, "nombre": "Construcción de aulas", "descripcion": "Levantar paredes y techos", "is_completed": "false" }
-    ]
+async function getUserPassword(userId: number): Promise<string | null> {
+  try {
+    
+    const [rows] = await pool.query(
+      'SELECT password FROM usuarios WHERE id_usuario = ?',
+      [userId]
+    );
+    
+    
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return null;
+    }
+    
+    return (rows[0] as any).password;
+  } catch (error) {
+    console.error("Error al obtener contraseña:", error);
+    return null;
+  }
 }
 
-*/
-// ---------- Helpers Bonita ----------
 async function bonitaLogin() {
-  const res = await fetch(`${BONITA_URL}/loginservice`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `username=${encodeURIComponent(BONITA_USER)}&password=${encodeURIComponent(BONITA_PASS)}`,
-  })
-  if (!res.ok) throw new Error("Error al hacer login en Bonita")
+  const user = await authUser();
+  console.log("AUTH USER:", user); // 👈 DEBUG IMPORTANTE
 
-  const cookies = res.headers.get("set-cookie") ?? ""
-  const token = (cookies.match(/X-Bonita-API-Token=([^;]+)/)?.[1]) ?? ""
-  if (!token) throw new Error("No llegó X-Bonita-API-Token en login")
+  if (!user) throw new Error("No autenticado");
 
-  const sesRes = await fetch(`${BONITA_URL}/API/system/session/1`, {
-    headers: { Cookie: cookies, "X-Bonita-API-Token": token },
-  })
-  if (!sesRes.ok) throw new Error("No pude leer la sesión de Bonita")
-  const session = (await sesRes.json()) as BonitaSession
-  return { cookies, token, session }
+  // Obtener contraseña desde la base de datos
+  const password = await getUserPassword(user.id_usuario);
+  if (!password) {
+    throw new Error("No se pudo obtener la contraseña del usuario desde la base de datos");
+  }
+
+  // Realizar login a Bonita
+  const bonitaSession = await loginToBonita(user.username, password);
+  if (!bonitaSession) {
+    throw new Error("Error al iniciar sesión en Bonita");
+  }
+
+  // Ajustar la estructura de retorno al formato esperado
+  return {
+    cookies: bonitaSession.cookies, // <- coincide con loginToBonita
+    token: bonitaSession.token,     // <- coincide con loginToBonita
+    session: {
+      user_id: bonitaSession.session.user_id,
+      user_name: bonitaSession.session.user_name,
+      tenant_id: bonitaSession.session.tenant_id ?? "1",
+    },
+  };
 }
 
 /**
@@ -222,8 +238,23 @@ export async function POST(request: Request) {
   let connection;
   try {
     const body = await request.json()
-  
+    const usuario = await authUser();
+  if (!usuario) throw new Error("No autenticado");
+    // Sobrescribir el ong_responsable_id con el del usuario logueado
+    body.ong_responsable_id = usuario.id_ong;
     const proyecto = normalizeProyecto(body)
+
+    // 🔹 Log para depuración
+  console.log("[DEBUG] Proyecto que se enviará a Bonita:", {
+    nombre: proyecto.nombre,
+    id_proyecto: proyecto.id_proyecto,
+    ong_responsable_id: proyecto.ong_responsable_id,
+    etapas: proyecto.etapas.map(e => ({
+      id_etapa: e.id_etapa,
+      nombre: e.nombre,
+      ong_responsable_id: e.ong_responsable_id,
+    })),
+  });
     // 1. GUARDAR SOLO LAS ETAPAS en MySQL (el proyecto ya existe)
     connection = await pool.getConnection();
     // Guardar las etapas
@@ -254,6 +285,17 @@ export async function POST(request: Request) {
 
 
     const { cookies, token, session } = await bonitaLogin()
+
+    
+    
+  if (!token) {
+     throw new Error("Bonita API token no disponible. El usuario debe iniciar sesión.");
+  }
+
+  if (!session.user_id) {
+  throw new Error("No se encontró el user_id de Bonita. El usuario debe iniciar sesión.");
+}
+
 
     // 🔁 Instanciar el case resolviendo el proceso por NOMBRE
     const inst = await startCaseByProcessName({ cookies, token, processName: PROCESS_NAME })

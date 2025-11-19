@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import { NextResponse } from "next/server";
+import pool from "@/lib/db";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(request: Request) {
   try {
@@ -7,59 +9,76 @@ export async function POST(request: Request) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: 'Usuario y contraseña son requeridos' },
+        { error: "Usuario y contraseña son requeridos" },
         { status: 400 }
       );
     }
 
     const connection = await pool.getConnection();
-    
+
     try {
-      // Busca usuario en la base de datos
-      const [users] = await connection.execute(
-        'SELECT id_usuario, username, password, email, id_ong, es_gerente FROM usuarios WHERE username = ?',
+      const [rows] = await connection.execute(
+        "SELECT id_usuario, username, password, email, id_ong, es_gerente FROM usuarios WHERE username = ?",
         [username]
       );
 
-      const userArray = users as any[];
+      const users = rows as any[];
 
-      if (userArray.length === 0) {
-        return NextResponse.json(
-          { error: 'Usuario no encontrado' },
-          { status: 401 }
-        );
+      if (users.length === 0) {
+        return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
       }
 
-      const user = userArray[0];
+      const user = users[0];
 
-      if (user.password !== password) {
-        return NextResponse.json(
-          { error: 'Contraseña incorrecta' },
-          { status: 401 }
-        );
+      // SIN bcrypt, porque tenés passwords en texto plano
+      if (password !== user.password) {
+        return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
       }
 
-      // Eliminar la contraseña del objeto de respuesta
-      const { password: _, ...userWithoutPassword } = user;
+      // Datos que irán en el JWT (no sensibles)
+      const payload = {
+        id_usuario: user.id_usuario,
+        username: user.username,
+        id_ong: user.id_ong,
+        es_gerente: !!user.es_gerente,
+      };
 
-      // En producción, generar un JWT token aquí
-      const token = 'mock-jwt-token-' + Date.now();
-
-      return NextResponse.json({
-        message: 'Login exitoso',
-        token,
-        user: userWithoutPassword
+      // Firmar token
+      const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+        expiresIn: "2h",
       });
 
+      // Respuesta
+      const resp = NextResponse.json({
+        message: "Login exitoso",
+        user: {
+          id_usuario: user.id_usuario,
+          username: user.username,
+          email: user.email,
+          id_ong: user.id_ong,
+          es_gerente: !!user.es_gerente,
+        },
+      });
+
+      // 🔥 Solo cookie HttpOnly — NADA de localStorage ni devolver el token
+      resp.cookies.set("auth", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 60 * 60 * 2, // 2 horas
+      });
+
+      return resp;
     } finally {
       connection.release();
     }
-
-  } catch (error) {
-    console.error('Error en login:', error);
+  } catch (err) {
+    console.error("Error en login:", err);
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
 }
+
