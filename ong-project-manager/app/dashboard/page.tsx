@@ -82,6 +82,16 @@ export default function DashboardPage() {
             </p>
           </div>
 
+          <Link
+            href="/stages/collaboration"
+            className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow"
+          >
+            <h3 className="text-xl font-semibold mb-2">Etapas en las que colaboro</h3>
+            <p className="text-muted-foreground">
+              Ver y gestionar etapas en las que soy colaborador
+            </p>
+          </Link>
+
           {user?.es_gerente ? (
   <div className="bg-card rounded-lg border shadow-sm p-6 md:col-span-2">
     <h3 className="text-xl font-semibold mb-2">Reportes Gerenciales</h3>

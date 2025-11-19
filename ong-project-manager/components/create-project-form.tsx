@@ -3,12 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 
 interface ProjectData {
   nombre: string
@@ -138,6 +139,20 @@ export default function CreateProjectForm() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-start">
+        <Button
+          asChild
+          variant="outline"
+          className="border-2 border-primary text-primary hover:bg-primary/10"
+          size="sm"
+        >
+          <Link href="/" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Volver al inicio
+          </Link>
+        </Button>
+      </div>
+
       {/* Progress Indicator */}
       <div className="flex items-center justify-center gap-4">
         <div className="flex items-center gap-2">
