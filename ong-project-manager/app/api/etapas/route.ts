@@ -2,63 +2,14 @@ import { NextResponse } from "next/server";
 import pool from '@/lib/db';
 import { loginToBonita } from "@/lib/bonitaLogin";
 import { authUser } from "@/lib/auth";
+import { getBonitaAuth } from "@/lib/bonita-utils";
 
 const BONITA_URL = process.env.BONITA_URL ?? "http://localhost:8080/bonita"
 // 🔁 Now we resolve the process by NAME, not fixed ID
 const PROCESS_NAME = process.env.BONITA_PROCESS_NAME ?? "MiProceso"
 const TASK_NAME = process.env.BONITA_TASK_NAME ?? "tarea1"
 
-type BonitaSession = { user_id: string; user_name: string; tenant_id: string }
 
-async function getUserPassword(userId: number): Promise<string | null> {
-  try {
-    
-    const [rows] = await pool.query(
-      'SELECT password FROM usuarios WHERE id_usuario = ?',
-      [userId]
-    );
-    
-    
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return null;
-    }
-    
-    return (rows[0] as any).password;
-  } catch (error) {
-    console.error("Error al obtener contraseña:", error);
-    return null;
-  }
-}
-
-async function bonitaLogin() {
-  const user = await authUser();
-  console.log("AUTH USER:", user); // 👈 DEBUG IMPORTANTE
-
-  if (!user) throw new Error("No autenticado");
-
-  // Obtener contraseña desde la base de datos
-  const password = await getUserPassword(user.id_usuario);
-  if (!password) {
-    throw new Error("No se pudo obtener la contraseña del usuario desde la base de datos");
-  }
-
-  // Realizar login a Bonita
-  const bonitaSession = await loginToBonita(user.username, password);
-  if (!bonitaSession) {
-    throw new Error("Error al iniciar sesión en Bonita");
-  }
-
-  // Ajustar la estructura de retorno al formato esperado
-  return {
-    cookies: bonitaSession.cookies, // <- coincide con loginToBonita
-    token: bonitaSession.token,     // <- coincide con loginToBonita
-    session: {
-      user_id: bonitaSession.session.user_id,
-      user_name: bonitaSession.session.user_name,
-      tenant_id: bonitaSession.session.tenant_id ?? "1",
-    },
-  };
-}
 
 /**
  * Devuelve el processId (deployment id) de la última versión ENABLED
@@ -274,37 +225,37 @@ export async function POST(request: Request) {
     connection.release();
 
 
-    const { cookies, token, session } = await bonitaLogin()
+    const bonitaAuth = await getBonitaAuth();
 
     
     
-  if (!token) {
+  if (!bonitaAuth.token) {
      throw new Error("Bonita API token no disponible. El usuario debe iniciar sesión.");
   }
 
-  if (!session.user_id) {
+  if (!bonitaAuth.session.user_id) {
   throw new Error("No se encontró el user_id de Bonita. El usuario debe iniciar sesión.");
 }
 
 
     // 🔁 Instanciar el case resolviendo el proceso por NOMBRE
-    const inst = await startCaseByProcessName({ cookies, token, processName: PROCESS_NAME })
+    const inst = await startCaseByProcessName({ cookies:bonitaAuth.cookies, token:bonitaAuth.token, processName: PROCESS_NAME })
     const caseId = inst.caseId ?? inst.id ?? inst?.value ?? inst?.case_id
     if (!caseId) throw new Error("No obtuve caseId al instanciar")
 
-    await setCaseVarJsonString({ cookies, token, caseId, varName: "proyectoNuevo", value: proyecto })
+    await setCaseVarJsonString({ cookies:bonitaAuth.cookies, token:bonitaAuth.token, caseId, varName: "proyectoNuevo", value: proyecto })
 
     const task = await findTaskByNameLoose({
-      cookies, token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250
+      cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250
     })
 
-    await assignTask({ cookies, token, taskId: task.id, userId: session.user_id })
-    await completeTask({ cookies, token, taskId: task.id })
+    await assignTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: task.id, userId: bonitaAuth.session.user_id })
+    await completeTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: task.id })
 
     return NextResponse.json({
       success: true,
       message: `Case ${caseId} creado desde proceso '${PROCESS_NAME}' (última versión ENABLED), 'proyectoNuevo' seteado y task '${TASK_NAME}' completada.`,
-      data: { caseId, taskId: task.id, assignedTo: session.user_id },
+      data: { caseId, taskId: task.id, assignedTo: bonitaAuth.session.user_id },
     })
   } catch (err: any) {
     console.error("[Bonita][API] Error:", err)

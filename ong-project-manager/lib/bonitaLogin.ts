@@ -1,6 +1,6 @@
 interface BonitaSession {
   id: number;
-  tenant_id: number;
+  tenant_id: string;
   user_id: string;
   user_name: string;
   last_connection: string;
