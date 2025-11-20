@@ -89,6 +89,18 @@ export default function DashboardPage() {
             </p>
           </div>
 
+          {user?.es_gerente ? (
+            <Link
+              href="/observaciones"
+              className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow"
+            >
+              <h3 className="text-xl font-semibold mb-2">Observaciones</h3>
+              <p className="text-muted-foreground">
+                Revisar y responder observaciones de etapas donde tu ONG colabora
+              </p>
+            </Link>
+          ) : null}
+
           <Link
             href="/stages/collaboration"
             className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow"

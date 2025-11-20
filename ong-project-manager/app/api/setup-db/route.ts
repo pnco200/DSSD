@@ -27,12 +27,13 @@ export async function GET() {
       );
     `);
 
-    // Crear tabla proyectos - CORREGIDO: usar id_proyecto en lugar de id
+    // Crear tabla proyectos - ahora con id_externa opcional
     await connection.query(`
       CREATE TABLE IF NOT EXISTS proyectos (
         id_proyecto INT AUTO_INCREMENT PRIMARY KEY,
         nombre VARCHAR(255) NOT NULL,
         descripcion TEXT,
+        id_externa VARCHAR(255) NULL,
         id_ong_lider INT NULL ,
         fecha_inicio DATE,
         fecha_fin DATE,
@@ -41,9 +42,7 @@ export async function GET() {
       );
     `);
 
-  
-
-    // Crear tabla etapas - CORREGIDO: eliminar el ; después de BOOLEAN
+    // Crear tabla etapas - ahora con id_externa opcional
     await connection.query(`
       CREATE TABLE IF NOT EXISTS etapas (
         id_etapa INT PRIMARY KEY AUTO_INCREMENT,
@@ -51,23 +50,43 @@ export async function GET() {
         nombre VARCHAR(255) NOT NULL,
         descripcion TEXT,
         is_completed BOOLEAN,
+        id_externa VARCHAR(255) NULL,
         id_ong_ejecutora INT NULL,
         FOREIGN KEY (id_proyecto) REFERENCES proyectos(id_proyecto),
         FOREIGN KEY (id_ong_ejecutora) REFERENCES ongs(id_ong)
       );
     `);
 
-    // Opcional: Limpiar las tablas antes de insertar
-    await connection.query('DELETE FROM etapas');
-    await connection.query('DELETE FROM proyectos');
-    await connection.query('DELETE FROM usuarios');
-    await connection.query('DELETE FROM ongs');
+    // Crear tabla observaciones
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS observaciones (
+        id_observacion INT PRIMARY KEY AUTO_INCREMENT,
+        titulo VARCHAR(255) NOT NULL,
+        comentario TEXT,
+        respondida BOOLEAN DEFAULT FALSE,
+        respuesta TEXT,
+        fecha_observacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_fin_observacion TIMESTAMP NULL,
+        id_etapa INT NOT NULL,
+        id_usuario INT NOT NULL,
+        FOREIGN KEY (id_etapa) REFERENCES etapas(id_etapa),
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+      );
+    `);
 
-    
+    // Opcional: Limpiar las tablas antes de insertar (orden para respetar FK)
+    await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+    await connection.query('TRUNCATE TABLE observaciones');
+    await connection.query('TRUNCATE TABLE etapas');
+    await connection.query('TRUNCATE TABLE proyectos');
+    await connection.query('TRUNCATE TABLE usuarios');
+    await connection.query('TRUNCATE TABLE ongs');
+    await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+
     // Insertar datos de ejemplo en ongs
     await connection.query(`
       INSERT INTO ongs (nombre) VALUES
-      ('ONG Líder'),
+      ('ONG Lider'),
       ('ONG Colaboradora');
     `);
 
@@ -84,19 +103,27 @@ export async function GET() {
     // Insertar datos de ejemplo en proyectos - AHORA con id_ong_lider
     await connection.query(`
       INSERT INTO proyectos (nombre, descripcion, fecha_inicio, fecha_fin, en_ejecucion, id_ong_lider) VALUES
-      ('Proyecto Educación Rural', 'Programa de alfabetización en zonas rurales', '2024-01-15', '2024-12-31', true, 1),
-      ('Iniciativa Salud Comunitaria', 'Campaña de prevención y salud básica', '2024-03-01', '2024-11-30', true, 1),
-      ('Campaña Reforestación', 'Restauración de áreas naturales protegidas', '2024-02-01', '2024-08-31', false, 2);
+      ('Proyecto Educacion Rural', 'Programa de alfabetizacion en zonas rurales', '2024-01-15', '2024-12-31', true, 1),
+      ('Iniciativa Salud Comunitaria', 'Campania de prevencion y salud basica', '2024-03-01', '2024-11-30', true, 1),
+      ('Campania Reforestacion', 'Restauracion de areas naturales protegidas', '2024-02-01', '2024-08-31', false, 2);
     `);
 
-     // Insertar datos de ejemplo en etapas
+    // Insertar datos de ejemplo en etapas
     await connection.query(`
       INSERT INTO etapas (id_proyecto, nombre, descripcion, is_completed, id_ong_ejecutora) VALUES
-      (1, 'Diagnóstico Comunitario', 'Evaluación de necesidades educativas', TRUE, 1),
-      (1, 'Diseño Curricular', 'Desarrollo de material educativo', FALSE, 1),
-      (2, 'Estudio Epidemiológico', 'Análisis de situación de salud', TRUE, 2),
-      (2, 'Capacitación de Voluntarios', 'Formación del equipo de trabajo', FALSE, 1),
-      (3, 'Identificación de Áreas', 'Selección de zonas a reforestar', FALSE, 2);
+      (1, 'Diagnostico Comunitario', 'Evaluacion de necesidades educativas', TRUE, 1),
+      (1, 'Diseno Curricular', 'Desarrollo de material educativo', FALSE, 1),
+      (2, 'Estudio Epidemiologico', 'Analisis de situacion de salud', TRUE, 2),
+      (2, 'Capacitacion de Voluntarios', 'Formacion del equipo de trabajo', FALSE, 1),
+      (3, 'Identificacion de Areas', 'Seleccion de zonas a reforestar', FALSE, 2);
+    `);
+
+    // Insertar datos de ejemplo en observaciones
+    await connection.query(`
+      INSERT INTO observaciones (titulo, comentario, respondida, respuesta, fecha_observacion, fecha_fin_observacion, id_etapa, id_usuario)
+      VALUES
+        ('Ajustar cronograma', 'Revisar fechas por superposicion con evento local', FALSE, NULL, NOW(), NULL, 2, 2),
+        ('Requiere materiales', 'Solicitar insumos a logistica', TRUE, 'Gestionado con proveedor', NOW(), NOW(), 4, 1);
     `);
 
     connection.release();
@@ -106,7 +133,7 @@ export async function GET() {
     console.error('Error detallado:', error);
     if (connection) connection.release();
     
-    const errorMessage = error instanceof Error ? error.message : 'Un error desconocido ocurrió';
+    const errorMessage = error instanceof Error ? error.message : 'Un error desconocido ocurriA3';
     return NextResponse.json({ 
       error: 'Error al configurar la base de datos', 
       details: errorMessage 
