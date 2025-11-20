@@ -15,9 +15,18 @@ export async function authUser(): Promise<AuthPayload | null> {
   if (!token) return null;
 
   try {
-    const data = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
+    const data = jwt.verify(token, "gastondev") as AuthPayload;
     return data;
   } catch (err) {
     return null;
   }
+}
+
+export async function getTokenJWT(): Promise<String | null> {
+  const cookieStore = await cookies(); 
+  const token = cookieStore.get("auth")?.value;
+
+  if (!token) return null;
+
+  return token
 }

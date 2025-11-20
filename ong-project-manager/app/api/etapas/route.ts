@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import pool from '@/lib/db';
-import { loginToBonita } from "@/lib/bonitaLogin";
-import { authUser } from "@/lib/auth";
+import { authUser, getTokenJWT } from "@/lib/auth";
 import { getBonitaAuth } from "@/lib/bonita-utils";
 
 const BONITA_URL = process.env.BONITA_URL ?? "http://localhost:8080/bonita"
@@ -88,6 +87,7 @@ async function findTaskByNameLoose({
 async function setCaseVarJsonString({
   cookies, token, caseId, varName, value,
 }: { cookies: string; token: string; caseId: string; varName: string; value: unknown }) {
+  let parsedValue = varName == 'proyectoNuevo' ? JSON.stringify(value) : value
   const res = await fetch(`${BONITA_URL}/API/bpm/caseVariable/${caseId}/${encodeURIComponent(varName)}`, {
     method: "PUT",
     headers: {
@@ -95,7 +95,7 @@ async function setCaseVarJsonString({
       Cookie: cookies,
       "X-Bonita-API-Token": token,
     },
-    body: JSON.stringify({ type: "java.lang.String", value: JSON.stringify(value) }),
+    body: JSON.stringify({ type: "java.lang.String", value: parsedValue }),
   })
   if (!res.ok) {
     const err = await res.text()
@@ -181,7 +181,7 @@ function normalizeProyecto(input: any): ProyectoIn {
     }
   })
 
-  return { id_proyecto,nombre,descripcion,fecha_inicio, fecha_fin, ong_responsable_id, etapas: etapasOut }
+  return { id_proyecto, nombre, descripcion, fecha_inicio, fecha_fin, ong_responsable_id, etapas: etapasOut }
 }
 
 // ---------- Handler ----------
@@ -190,12 +190,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const usuario = await authUser();
-  if (!usuario) throw new Error("No autenticado");
+    if (!usuario) throw new Error("No autenticado");
     // Sobrescribir el ong_responsable_id con el del usuario logueado
     body.ong_responsable_id = usuario.id_ong;
     const proyecto = normalizeProyecto(body)
 
-    
     // 1. GUARDAR SOLO LAS ETAPAS en MySQL (el proyecto ya existe)
     connection = await pool.getConnection();
     // Guardar las etapas
@@ -212,7 +211,7 @@ export async function POST(request: Request) {
           etapa.ong_responsable_id
         ]
       );
-      
+
       const etapaId = (etapaResult as any).insertId;
       etapasGuardadas.push({
         id_etapa: etapaId,
@@ -227,23 +226,29 @@ export async function POST(request: Request) {
 
     const bonitaAuth = await getBonitaAuth();
 
-    
-    
-  if (!bonitaAuth.token) {
-     throw new Error("Bonita API token no disponible. El usuario debe iniciar sesión.");
-  }
-
-  if (!bonitaAuth.session.user_id) {
-  throw new Error("No se encontró el user_id de Bonita. El usuario debe iniciar sesión.");
-}
 
 
+    if (!bonitaAuth.token) {
+      throw new Error("Bonita API token no disponible. El usuario debe iniciar sesión.");
+    }
+
+    if (!bonitaAuth.session.user_id) {
+      throw new Error("No se encontró el user_id de Bonita. El usuario debe iniciar sesión.");
+    }
+
+    const tokenJWT = await getTokenJWT()
     // 🔁 Instanciar el case resolviendo el proceso por NOMBRE
-    const inst = await startCaseByProcessName({ cookies:bonitaAuth.cookies, token:bonitaAuth.token, processName: PROCESS_NAME })
+    const inst = await startCaseByProcessName({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, processName: PROCESS_NAME })
     const caseId = inst.caseId ?? inst.id ?? inst?.value ?? inst?.case_id
     if (!caseId) throw new Error("No obtuve caseId al instanciar")
-
-    await setCaseVarJsonString({ cookies:bonitaAuth.cookies, token:bonitaAuth.token, caseId, varName: "proyectoNuevo", value: proyecto })
+    await setCaseVarJsonString({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId: caseId,
+      varName: "tokenJWT",
+      value: tokenJWT,
+    })
+    await setCaseVarJsonString({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "proyectoNuevo", value: proyecto })
 
     const task = await findTaskByNameLoose({
       cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250

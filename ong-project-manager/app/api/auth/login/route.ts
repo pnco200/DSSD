@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       };
 
       // Firmar token
-      const token = jwt.sign(payload, process.env.JWT_SECRET!, {
+      const token = jwt.sign(payload, "gastondev", {
         expiresIn: "2h",
       });
 
