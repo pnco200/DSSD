@@ -2,62 +2,68 @@
 
 import { useState, useEffect } from 'react';
 
-interface Stage {
-  id: string;
+interface Etapa {
+  id: number;
+  id_externa: string;
   nombre: string;
   descripcion: string;
-  requisitos: string[];
-  fechaLimite: string;
-  proyecto: string;
+  is_completed: boolean;
+  ong_ejecutora: any;
+  proyecto: {
+    id: number;
+    nombre: string;
+    descripcion: string;
+  };
+  observaciones: any[];
 }
 
 export default function AvailableStagesPage() {
-  const [stages, setStages] = useState<Stage[]>([]);
+  const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAvailableStages();
+    loadAvailableEtapas();
   }, []);
 
-  const loadAvailableStages = async () => {
+  const loadAvailableEtapas = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
+      console.log("Cargando etapas...");
       const response = await fetch('/api/collaboration/available');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
-      setStages(data.stages);
+      if (!data.success) {
+        throw new Error(data.error || 'Error al cargar etapas');
+      }
+      
+      setEtapas(data.stages);
       setTaskId(data.taskId);
-    } catch (error) {
-      console.error('Error:', error);
+      
+      
+      
+    } catch (err: any) {
+      console.error(' Error cargando etapas:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCollaborate = async (stageId: string) => {
-    if (!taskId) return;
-
-    try {
-      const response = await fetch('/api/stages/collaborate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          taskId,
-          stageId
-        })
-      });
-
-      if (response.ok) {
-        alert('¡Ahora estás colaborando en esta etapa!');
-        loadAvailableStages(); // Recargar lista
-      }
-    } catch (error) {
-      alert('Error al colaborar');
-      console.error(error);
-    }
+  //  función de colaborar
+  /*
+  const handleCollaborate = async (etapaId: number) => {
+    // código comentado por ahora
   };
+  */
 
   if (loading) {
     return (
@@ -65,6 +71,22 @@ export default function AvailableStagesPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Cargando etapas disponibles...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg mb-4">{error}</p>
+          <button
+            onClick={loadAvailableEtapas}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
@@ -81,49 +103,74 @@ export default function AvailableStagesPage() {
             Explora oportunidades de colaboración en proyectos de otras ONGs
           </p>
 
-          {stages.length === 0 ? (
-            <div className="text-center py-12">
+          {etapas.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow">
               <p className="text-gray-500 text-lg">
                 No hay etapas disponibles para colaboración en este momento.
               </p>
               <p className="text-gray-400 mt-2">
-                Las etapas aparecerán aquí cuando otros usuarios creen proyectos.
+                Las etapas aparecerán aquí cuando otros usuarios creen proyectos y habiliten colaboraciones.
               </p>
             </div>
           ) : (
             <div className="grid gap-6">
-              {stages.map((stage) => (
-                <div key={stage.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+              {etapas.map((etapa) => (
+                <div key={etapa.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-xl font-semibold text-gray-800">
-                        {stage.nombre}
+                        {etapa.nombre}
                       </h3>
-                      <p className="text-gray-600 mt-1">{stage.proyecto}</p>
+                      <p className="text-gray-600 mt-1">
+                        Proyecto: <strong>{etapa.proyecto.nombre}</strong>
+                      </p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        {etapa.proyecto.descripcion}
+                      </p>
                     </div>
+                    {/*  - botón de colaborar */}
+                    {/*
                     <button
-                      onClick={() => handleCollaborate(stage.id)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                      onClick={() => handleCollaborate(etapa.id)}
+                      disabled={etapa.is_completed}
+                      className={`ml-4 px-6 py-2 rounded-lg font-medium transition-colors ${
+                        etapa.is_completed
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
                     >
-                      Colaborar
+                      {etapa.is_completed ? 'No Disponible' : 'Colaborar'}
                     </button>
+                    */}
                   </div>
 
-                  <p className="text-gray-700 mb-4">{stage.descripcion}</p>
+                  <p className="text-gray-700 mb-4">{etapa.descripcion}</p>
 
-                  {stage.requisitos && stage.requisitos.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-800 mb-2">Requisitos:</h4>
-                      <ul className="list-disc list-inside text-gray-600 space-y-1">
-                        {stage.requisitos.map((req, index) => (
-                          <li key={index}>{req}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {/* Estado */}
+                  <div className="flex items-center mb-4">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        etapa.is_completed
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      {etapa.is_completed ? 'Completada' : 'Disponible'}
+                    </span>
+                    
+                    {etapa.observaciones && etapa.observaciones.length > 0 && (
+                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        {etapa.observaciones.length} observación(es)
+                      </span>
+                    )}
+                  </div>
 
+                  {/* Información adicional */}
                   <div className="text-sm text-gray-500">
-                    Fecha límite: {new Date(stage.fechaLimite).toLocaleDateString()}
+                    <p>ID: {etapa.id_externa || etapa.id}</p>
+                    {etapa.ong_ejecutora && (
+                      <p>ONG Ejecutora: {etapa.ong_ejecutora.nombre}</p>
+                    )}
                   </div>
                 </div>
               ))}

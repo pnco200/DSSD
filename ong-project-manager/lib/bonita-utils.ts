@@ -103,6 +103,38 @@ export async function getTaskVariables(taskId: string, bonitaAuth: BonitaAuth) {
   return makeBonitaRequest(`/API/bpm/userTask/${taskId}/context`, bonitaAuth);
 }
 
+export async function getCaseVarJsonString({
+  cookies,
+  token,
+  caseId,
+  varName
+}: {
+  cookies: string;
+  token: string;
+  caseId: string;
+  varName: string;
+}) {
+  const response = await fetch(
+    `${process.env.BONITA_URL}/API/bpm/caseVariable/${caseId}/${encodeURIComponent(varName)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookies,
+        "X-Bonita-API-Token": token,
+      },
+    }
+  );
+  
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`No pude obtener la variable '${varName}': ${err}`);
+  }
+  
+  const data = await response.json();
+  return data.value; // Retorna el valor de la variable
+}
+
 // Función para completar una tarea
 export async function completeTask(taskId: string, variables: any, bonitaAuth: BonitaAuth) {
   const response = await fetch(`${BONITA_URL}/API/bpm/userTask/${taskId}`, {
