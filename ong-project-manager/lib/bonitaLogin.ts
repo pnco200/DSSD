@@ -11,7 +11,6 @@ interface BonitaSession {
  */
 export async function loginToBonita(username: string, password: string) {
   try {
-    console.log("[Bonita] Iniciando login para usuario:", username);
 
     const res = await fetch(`${process.env.BONITA_URL}/loginservice`, {
       method: "POST",
@@ -19,25 +18,20 @@ export async function loginToBonita(username: string, password: string) {
       body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
     });
 
-    console.log("[Bonita] Respuesta login status:", res.status);
     if (!res.ok) throw new Error(`Error al hacer login en Bonita: ${res.status} ${res.statusText}`);
 
     const cookies = res.headers.get("set-cookie") ?? "";
-    console.log("[Bonita] Cookies recibidas:", cookies);
 
     const token = cookies.match(/X-Bonita-API-Token=([^;]+)/)?.[1] ?? "";
-    console.log("[Bonita] Token extraído:", token);
     if (!token) throw new Error("No llegó X-Bonita-API-Token en login");
 
     const sesRes = await fetch(`${process.env.BONITA_URL}/API/system/session/1`, {
       headers: { Cookie: cookies, "X-Bonita-API-Token": token },
     });
 
-    console.log("[Bonita] Respuesta session status:", sesRes.status);
     if (!sesRes.ok) throw new Error(`No pude leer la sesión de Bonita: ${sesRes.status} ${sesRes.statusText}`);
 
     const session = (await sesRes.json()) as BonitaSession;
-    console.log("[Bonita] Sesión obtenida:", session);
 
     return { cookies, token, session };
   } catch (err: any) {

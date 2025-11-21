@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { assignTask, completeTask, getBonitaAuth, getCaseVarJsonString, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
 import { authUser, getTokenJWT } from "@/lib/auth";
+import pool from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
-    const { caseId, taskId, etapaId } = await request.json();
+    const { caseId, taskId, etapaId, idExterna } = await request.json();
     
     if (!taskId || !caseId || !etapaId) {
       return NextResponse.json(
@@ -55,10 +56,19 @@ export async function POST(request: Request) {
       caseId: caseId,
       varName: "etapaIdAdjudicada",
       value: etapaId
-      });
+    });
     await assignTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: taskId, userId: bonitaAuth.session.user_id })
     await completeTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: taskId })
 
+    const conn = await pool.getConnection();
+    const result2 = await conn.query(
+      `UPDATE etapas SET id_ong_ejecutora = ? WHERE id_etapa = ?`,
+      [usuario.id_ong, idExterna]
+    );
+    console.log(usuario.id_ong, idExterna)
+    console.log(result2)
+    console.log(JSON.stringify(result2))
+    conn.release();
     console.log("Resultado:", result)
     
 

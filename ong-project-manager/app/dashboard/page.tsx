@@ -82,12 +82,6 @@ export default function DashboardPage() {
             </p>
           </Link>
 
-          <div className="bg-card rounded-lg border shadow-sm p-6">
-            <h3 className="text-xl font-semibold mb-2">Mis Proyectos</h3>
-            <p className="text-muted-foreground">
-              Ver y gestionar proyectos existentes
-            </p>
-          </div>
 
           {user?.es_gerente ? (
             <Link

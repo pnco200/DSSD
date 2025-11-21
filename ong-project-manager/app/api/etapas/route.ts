@@ -233,6 +233,8 @@ export async function POST(request: Request) {
     })
     await setCaseVarJsonString({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "proyectoNuevo", value: proyecto })
     await setCaseVarInteger({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "etapasNoAdjudicadas", value: proyecto.etapas.length })
+    await setCaseVarInteger({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "etapasNoCompletadas", value: proyecto.etapas.length })
+    await setCaseVarInteger({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "id_proyecto_local", value: proyecto.id_proyecto })
     const task = await findTaskByNameLoose({
       cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250
     })

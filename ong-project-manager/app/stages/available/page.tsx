@@ -64,9 +64,9 @@ export default function AvailableStagesPage() {
       console.log("🟡 Llamando a API...");
       try {
         // 1. Confirmación del usuario
-        const etapaNombre = etapas.find(e => e.id === etapaId)?.nombre;
+        const etapa = etapas.find(e => e.id === etapaId);
         const confirmar = window.confirm(
-          `¿Estás seguro de que quieres colaborar en la etapa "${etapaNombre}"?`
+          `¿Estás seguro de que quieres colaborar en la etapa "${etapa?.nombre}"?`
         );       
         if (!confirmar) return;
         // 2. Llamar a tu API para completar la tarea en Bonita
@@ -78,13 +78,14 @@ export default function AvailableStagesPage() {
           body: JSON.stringify({
             taskId,
             caseId,
+            idExterna: etapa?.id_externa,
             etapaId: etapaId.toString()
           })
         });
 
         const result = await response.json();
         if (result.success) {
-          alert(`¡Éxito! Ahora estás colaborando en: ${etapaNombre}`);
+          alert(`¡Éxito! Ahora estás colaborando en: ${etapa?.nombre}`);
           loadAvailableEtapas();
           
         } else {
