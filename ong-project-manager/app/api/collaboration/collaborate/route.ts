@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { assignTask, completeTask, getBonitaAuth, getCaseVarJsonString, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
-import { getTokenJWT } from "@/lib/auth";
+import { authUser, getTokenJWT } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -38,6 +38,17 @@ export async function POST(request: Request) {
           varName: "etapasNoAdjudicadas",
           value: (etapasNoAdjudicadas-1),
     })
+    const usuario = await authUser();
+    if (!usuario) throw new Error("No autenticado");
+
+    await setCaseVarJsonString({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId: caseId,
+      varName: "idOngEjecutora",
+      value: JSON.stringify({ ong_id: usuario.id_ong })
+    })
+
     const result = await setCaseVarJsonString({
       cookies: bonitaAuth.cookies,
       token: bonitaAuth.token,
