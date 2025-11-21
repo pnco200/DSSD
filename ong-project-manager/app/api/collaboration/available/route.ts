@@ -68,6 +68,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       stages,
+      caseId: caseId,
       taskId: primeraTarea.id,
       processInstanceId: caseId,
       taskName: primeraTarea.displayName || primeraTarea.name

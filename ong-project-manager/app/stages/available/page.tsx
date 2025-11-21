@@ -21,6 +21,7 @@ export default function AvailableStagesPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [caseId, setCaseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function AvailableStagesPage() {
       
       setEtapas(data.stages);
       setTaskId(data.taskId);
-      
+      setCaseId(data.caseId);
       
       
     } catch (err: any) {
@@ -58,12 +59,42 @@ export default function AvailableStagesPage() {
     }
   };
 
-  //  función de colaborar
-  /*
   const handleCollaborate = async (etapaId: number) => {
-    // código comentado por ahora
+      if (!taskId) return;
+      console.log("🟡 Llamando a API...");
+      try {
+        // 1. Confirmación del usuario
+        const etapaNombre = etapas.find(e => e.id === etapaId)?.nombre;
+        const confirmar = window.confirm(
+          `¿Estás seguro de que quieres colaborar en la etapa "${etapaNombre}"?`
+        );       
+        if (!confirmar) return;
+        // 2. Llamar a tu API para completar la tarea en Bonita
+        const response = await fetch('/api/collaboration/collaborate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            taskId,
+            caseId,
+            etapaId: etapaId.toString()
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert(`¡Éxito! Ahora estás colaborando en: ${etapaNombre}`);
+          loadAvailableEtapas();
+          
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error: any) {
+        console.error('Error colaborando:', error);
+        alert('Error al colaborar: ' + error.message);
+      }
   };
-  */
 
   if (loading) {
     return (
@@ -128,8 +159,7 @@ export default function AvailableStagesPage() {
                         {etapa.proyecto.descripcion}
                       </p>
                     </div>
-                    {/*  - botón de colaborar */}
-                    {/*
+                    
                     <button
                       onClick={() => handleCollaborate(etapa.id)}
                       disabled={etapa.is_completed}
@@ -141,7 +171,7 @@ export default function AvailableStagesPage() {
                     >
                       {etapa.is_completed ? 'No Disponible' : 'Colaborar'}
                     </button>
-                    */}
+                    
                   </div>
 
                   <p className="text-gray-700 mb-4">{etapa.descripcion}</p>

@@ -103,6 +103,41 @@ export async function getTaskVariables(taskId: string, bonitaAuth: BonitaAuth) {
   return makeBonitaRequest(`/API/bpm/userTask/${taskId}/context`, bonitaAuth);
 }
 
+export  async function assignTask({ cookies, token, taskId, userId }: { cookies: string; token: string; taskId: string; userId: string }) {
+  const res = await fetch(`${BONITA_URL}/API/bpm/userTask/${taskId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookies,
+      "X-Bonita-API-Token": token,
+    },
+    body: JSON.stringify({ assigned_id: userId }),
+  })
+  if (!res.ok) throw new Error("No pude asignar la task al usuario")
+}
+export async function setCaseVarInteger({
+  cookies, token, caseId, varName, value,
+}: { cookies: string; token: string; caseId: string; varName: string; value: number }) {
+  
+  const res = await fetch(`${BONITA_URL}/API/bpm/caseVariable/${caseId}/${encodeURIComponent(varName)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookies,
+      "X-Bonita-API-Token": token,
+    },
+    body: JSON.stringify({ 
+      type: "java.lang.Integer",
+      value: value 
+    }),
+  })
+  
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`No pude setear la variable numérica '${varName}': ${err}`)
+  }
+}
+
 export async function getCaseVarJsonString({
   cookies,
   token,
@@ -136,28 +171,38 @@ export async function getCaseVarJsonString({
 }
 
 // Función para completar una tarea
-export async function completeTask(taskId: string, variables: any, bonitaAuth: BonitaAuth) {
-  const response = await fetch(`${BONITA_URL}/API/bpm/userTask/${taskId}`, {
+export async function completeTask({ cookies, token, taskId }: { cookies: string; token: string; taskId: string }) {
+  const res = await fetch(`${BONITA_URL}/API/bpm/userTask/${taskId}/execution`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: bonitaAuth.cookies,
-      "X-Bonita-API-Token": bonitaAuth.token,
+      Cookie: cookies,
+      "X-Bonita-API-Token": token,
     },
-    body: JSON.stringify({
-      state: "completed",
-      assigned_id: bonitaAuth.session.user_id,
-      variables: Object.entries(variables).map(([name, value]) => ({
-        name,
-        value
-      }))
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error completing task: ${errorText}`);
+    body: JSON.stringify({}), 
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`No pude completar la task: ${err}`)
   }
+}
 
-  return response.json();
+
+export async function setCaseVarJsonString({
+  cookies, token, caseId, varName, value,
+}: { cookies: string; token: string; caseId: string; varName: string; value: unknown }) {
+  let parsedValue = varName == 'proyectoNuevo' ? JSON.stringify(value) : value
+  const res = await fetch(`${BONITA_URL}/API/bpm/caseVariable/${caseId}/${encodeURIComponent(varName)}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookies,
+      "X-Bonita-API-Token": token,
+    },
+    body: JSON.stringify({ type: "java.lang.String", value: parsedValue }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`No pude setear la variable '${varName}': ${err}`)
+  }
 }

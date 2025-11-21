@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from '@/lib/db';
 import { authUser, getTokenJWT } from "@/lib/auth";
-import { getBonitaAuth } from "@/lib/bonita-utils";
+import { getBonitaAuth, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
 
 const BONITA_URL = process.env.BONITA_URL ?? "http://localhost:8080/bonita"
 // 🔁 Now we resolve the process by NAME, not fixed ID
@@ -84,24 +84,7 @@ async function findTaskByNameLoose({
   throw new Error(`No encontré la task '${name}'${requireReady ? " en estado 'ready'" : ""} para el case ${caseId}`)
 }
 
-async function setCaseVarJsonString({
-  cookies, token, caseId, varName, value,
-}: { cookies: string; token: string; caseId: string; varName: string; value: unknown }) {
-  let parsedValue = varName == 'proyectoNuevo' ? JSON.stringify(value) : value
-  const res = await fetch(`${BONITA_URL}/API/bpm/caseVariable/${caseId}/${encodeURIComponent(varName)}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookies,
-      "X-Bonita-API-Token": token,
-    },
-    body: JSON.stringify({ type: "java.lang.String", value: parsedValue }),
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`No pude setear la variable '${varName}': ${err}`)
-  }
-}
+
 
 async function assignTask({ cookies, token, taskId, userId }: { cookies: string; token: string; taskId: string; userId: string }) {
   const res = await fetch(`${BONITA_URL}/API/bpm/userTask/${taskId}`, {
@@ -249,7 +232,7 @@ export async function POST(request: Request) {
       value: tokenJWT,
     })
     await setCaseVarJsonString({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "proyectoNuevo", value: proyecto })
-
+    await setCaseVarInteger({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId, varName: "etapasNoAdjudicadas", value: proyecto.etapas.length })
     const task = await findTaskByNameLoose({
       cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250
     })
