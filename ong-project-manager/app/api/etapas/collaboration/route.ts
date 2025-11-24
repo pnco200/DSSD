@@ -21,6 +21,7 @@ type EtapaRow = {
   descripcion_proyecto: string | null
   fecha_inicio: string | null
   fecha_fin: string | null
+  en_ejecucion: number | boolean | null
 }
 
 export async function GET() {
@@ -39,7 +40,8 @@ export async function GET() {
         p.nombre AS nombre_proyecto,
         p.descripcion AS descripcion_proyecto,
         p.fecha_inicio,
-        p.fecha_fin
+        p.fecha_fin,
+        p.en_ejecucion
       FROM etapas e
       INNER JOIN proyectos p ON p.id_proyecto = e.id_proyecto
       WHERE e.id_ong_ejecutora = ?`,
@@ -56,6 +58,7 @@ export async function GET() {
       descripcion_proyecto: row.descripcion_proyecto ?? "",
       fecha_inicio: row.fecha_inicio ?? "",
       fecha_fin: row.fecha_fin ?? "",
+      en_ejecucion: String(row.en_ejecucion).toLowerCase() === "true" || row.en_ejecucion === 1,
     }))
 
     return NextResponse.json({ etapas })

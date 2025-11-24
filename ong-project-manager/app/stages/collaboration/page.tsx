@@ -19,6 +19,7 @@ type StageItem = {
   nombre: string
   descripcion: string
   is_completed: boolean
+  en_ejecucion: boolean
 }
 
 type DashboardUser = {
@@ -195,9 +196,15 @@ export default function CollaborationStagesPage() {
                       <Button
                         size="sm"
                         onClick={() => completeStage(stage.id_etapa)}
-                        disabled={completingId === stage.id_etapa}
+                        disabled={completingId === stage.id_etapa || !stage.en_ejecucion}
+                        variant={!stage.en_ejecucion ? "secondary" : "default"}
+                        className={!stage.en_ejecucion ? "bg-gray-200 text-gray-600 hover:bg-gray-200" : ""}
                       >
-                        {completingId === stage.id_etapa ? "Marcando..." : "Marcar etapa como completada"}
+                        {!stage.en_ejecucion
+                          ? "Proyecto con etapas sin asginar"
+                          : completingId === stage.id_etapa
+                            ? "Marcando..."
+                            : "Marcar etapa como completada"}
                       </Button>
                     )}
                   </div>
