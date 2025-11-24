@@ -18,7 +18,17 @@ export async function POST(request: Request) {
 
     try {
       const [rows] = await connection.execute(
-        "SELECT id_usuario, username, password, email, id_ong, es_gerente FROM usuarios WHERE username = ?",
+        `SELECT 
+          u.id_usuario, 
+          u.username, 
+          u.password, 
+          u.email, 
+          u.id_ong, 
+          u.es_gerente,
+          o.nombre AS ong_nombre
+        FROM usuarios u
+        LEFT JOIN ongs o ON o.id_ong = u.id_ong
+        WHERE u.username = ?`,
         [username]
       );
 
@@ -37,8 +47,11 @@ export async function POST(request: Request) {
 
       const payload = {
         id_usuario: user.id_usuario,
+        userId: user.id_usuario, // alias para compatibilidad con servicios que esperan userId
         username: user.username,
         id_ong: user.id_ong,
+        ong_id: user.id_ong, // alias para compatibilidad
+        ong_nombre: user.ong_nombre ?? null,
         es_gerente: !!user.es_gerente,
       };
 
@@ -55,6 +68,7 @@ export async function POST(request: Request) {
           username: user.username,
           email: user.email,
           id_ong: user.id_ong,
+          ong_nombre: user.ong_nombre ?? null,
           es_gerente: !!user.es_gerente,
         },
       });

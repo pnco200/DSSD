@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server"
 import pool from "@/lib/db"
 import { authUser } from "@/lib/auth"
+import {
+  assignTask,
+  completeTask,
+  getBonitaAuth,
+  getCaseVarJsonString,
+  getUserPendingTasks,
+  setCaseVarInteger,
+  setCaseVarJsonString,
+} from "@/lib/bonita-utils"
 
 type EtapaRow = {
   id_etapa: number
@@ -80,10 +89,83 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Etapa no encontrada o no pertenece a tu ONG" }, { status: 404 })
     }
 
-    // Placeholder para sincronizar con Bonita (pendiente de implementacion)
-    console.log("[Collaboration][PATCH] Etapa marcada como completada. Pendiente de sync Bonita:", id_etapa)
+    const bonitaAuth = await getBonitaAuth()
+    const nameMatches = (task: any) => {
+      const name = `${task.name ?? ""}`.toLowerCase()
+      const displayName = `${task.displayName ?? ""}`.toLowerCase()
+      return name.includes("ejecutar etapa adjudicada") || displayName.includes("ejecutar etapa adjudicada")
+    }
 
-    return NextResponse.json({ success: true, id_etapa })
+    const pendingTasks = await getUserPendingTasks(bonitaAuth)
+    console.log("[Collaboration][PATCH] Tareas pendientes READY 'Ejecutar etapa adjudicada':",
+      pendingTasks.filter(nameMatches).filter((t: any) => `${t.state ?? ""}`.toLowerCase() === "ready")
+        .map((t: any) => ({ id: t.id, name: t.name, state: t.state, caseId: t.rootCaseId ?? t.caseId ?? t.processInstanceId })))
+    const ejecutaEtapaTasks = pendingTasks
+      .filter(nameMatches)
+      .filter((task: any) => `${task.state ?? ""}`.toLowerCase() === "ready")
+
+    let targetTask: any = null
+    let targetCaseId: string | null = null
+
+    if (ejecutaEtapaTasks.length) {
+      const task = ejecutaEtapaTasks[0]
+      targetTask = task
+      targetCaseId = String(task.rootCaseId ?? task.caseId ?? task.processInstanceId ?? "")
+    }
+
+    if (!targetTask || !targetCaseId) {
+      return NextResponse.json(
+        { error: "No se encontro una tarea 'Ejecutar etapa adjudicada' en estado READY" },
+        { status: 404 },
+      )
+    }
+
+    const etapasNoCompletadasRaw = await getCaseVarJsonString({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId: targetCaseId,
+      varName: "etapasNoCompletadas",
+    })
+    console.log("[Collaboration][PATCH] Variable Bonita leida: etapasNoCompletadas =", etapasNoCompletadasRaw, "caseId:", targetCaseId)
+
+    const etapasNoCompletadas = Number(etapasNoCompletadasRaw)
+    if (Number.isNaN(etapasNoCompletadas)) {
+      throw new Error("La variable 'etapasNoCompletadas' no es numerica en Bonita")
+    }
+
+    await setCaseVarJsonString({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId: targetCaseId,
+      varName: "etapaIdCompletada",
+      value: String(id_etapa),
+    })
+    console.log("[Collaboration][PATCH] Variable Bonita seteada: etapaIdCompletada =", String(id_etapa), "caseId:", targetCaseId)
+
+    await setCaseVarInteger({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId: targetCaseId,
+      varName: "etapasNoCompletadas",
+      value: Math.max(0, etapasNoCompletadas - 1),
+    })
+    console.log("[Collaboration][PATCH] Variable Bonita seteada: etapasNoCompletadas =", Math.max(0, etapasNoCompletadas - 1), "caseId:", targetCaseId)
+
+    await assignTask({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      taskId: targetTask.id,
+      userId: bonitaAuth.session.user_id,
+    })
+    await completeTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: targetTask.id })
+
+    console.log("[Collaboration][PATCH] Etapa completada en Bonita", {
+      caseId: targetCaseId,
+      taskId: targetTask.id,
+      etapaId: id_etapa,
+    })
+
+    return NextResponse.json({ success: true, id_etapa, caseId: targetCaseId, taskId: targetTask.id })
   } catch (error: any) {
     console.error("[Collaboration][PATCH] Error:", error)
     return NextResponse.json({ error: error?.message ?? "Error interno" }, { status: 500 })

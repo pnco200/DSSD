@@ -3,8 +3,11 @@ import { cookies } from "next/headers";
 
 export type AuthPayload = {
   id_usuario: number;
+  userId?: number; // alias para compatibilidad
   username: string;
-  id_ong: number;
+  id_ong: number | null;
+  ong_id?: number | null; // alias para compatibilidad
+  ong_nombre?: string | null;
   es_gerente: boolean;
 };
 
