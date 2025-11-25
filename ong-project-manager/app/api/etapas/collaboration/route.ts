@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import pool from "@/lib/db"
-import { authUser } from "@/lib/auth"
+import { authUser, getTokenJWT } from "@/lib/auth"
 import {
   assignTask,
   completeTask,
@@ -93,6 +93,7 @@ export async function PATCH(request: Request) {
     }
 
     const bonitaAuth = await getBonitaAuth()
+    const tokenJWT = await getTokenJWT()
     const nameMatches = (task: any) => {
       const name = `${task.name ?? ""}`.toLowerCase()
       const displayName = `${task.displayName ?? ""}`.toLowerCase()
@@ -144,6 +145,16 @@ export async function PATCH(request: Request) {
       value: String(id_etapa),
     })
     console.log("[Collaboration][PATCH] Variable Bonita seteada: etapaIdCompletada =", String(id_etapa), "caseId:", targetCaseId)
+    if (tokenJWT) {
+      await setCaseVarJsonString({
+        cookies: bonitaAuth.cookies,
+        token: bonitaAuth.token,
+        caseId: targetCaseId,
+        varName: "tokenJWT",
+        value: tokenJWT,
+      })
+      console.log("[Collaboration][PATCH] Variable Bonita seteada: tokenJWT actualizado para usuario actual")
+    }
 
     await setCaseVarInteger({
       cookies: bonitaAuth.cookies,
