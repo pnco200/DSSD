@@ -278,3 +278,106 @@ export async function appendToInfoReporte({
     value: currentInfo // setCaseVarJsonString ya hace el JSON.stringify si es objeto
   });
 }
+
+// ---------------------------------------------------------------------------
+// 1. Buscar un caso ARCHIVADO (finalizado) por ID local - CON VALIDACIONES
+// ---------------------------------------------------------------------------
+export async function findArchivedCaseByLocalId(bonitaAuth: BonitaAuth, processName: string, localId: number) {
+  try {
+    // 1. Obtener Process ID
+    const resProc = await fetch(`${process.env.BONITA_URL}/API/bpm/process?f=name=${encodeURIComponent(processName)}&o=version%20DESC&c=1`, {
+      headers: { Cookie: bonitaAuth.cookies, "X-Bonita-API-Token": bonitaAuth.token }
+    });
+    
+    if (!resProc.ok) {
+        console.error("[Bonita] Error buscando proceso:", await resProc.text());
+        return null;
+    }
+
+    const procs = await resProc.json();
+    if (!Array.isArray(procs) || procs.length === 0) return null;
+    
+    const processId = procs[0].id;
+    console.log("PROCESS ID ENCONTRADO ", processId);
+    // 2. Buscar cases archivados
+    // CORRECCIÓN AQUÍ: Usamos %20 en lugar de espacio
+    const urlCases = `${process.env.BONITA_URL}/API/bpm/archivedCase?processDefinitionId=${processId}&archivedDate=DESC`;
+    
+    const resCases = await fetch(urlCases, {
+      headers: { Cookie: bonitaAuth.cookies, "X-Bonita-API-Token": bonitaAuth.token }
+    });
+
+    if (!resCases.ok) {
+        console.error("[Bonita] Error buscando archivedCases:", resCases.status);
+        return null;
+    }
+
+    const cases = await resCases.json();
+    console.log(cases)
+    // Validación de seguridad para evitar "cases is not iterable"
+    if (!Array.isArray(cases)) {
+        console.error("[Bonita] Respuesta inválida de archivedCases (no es array):", cases);
+        return null;
+    }
+    console.log("Local ID", localId)
+    // 3. Filtrar manualmente
+    for (const c of cases) {
+      try {
+        const val = await getArchivedCaseVarJsonString({
+          bonitaAuth,
+          caseId: c.sourceObjectId, 
+          varName: "info_reporte",
+          localId: localId
+        });
+        if(val){
+          return val
+        }
+      } catch (e) { 
+          continue; 
+      }
+    }
+    
+    return null;
+
+  } catch (err) {
+      console.error("[Bonita Utils] Error crítico en findArchivedCaseByLocalId:", err);
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. Obtener variable de un caso ARCHIVADO - CON VALIDACIONES
+// ---------------------------------------------------------------------------
+export async function getArchivedCaseVarJsonString({
+  bonitaAuth, caseId, varName, localId
+}: { bonitaAuth: BonitaAuth, caseId: string, varName: string, localId:number }) {
+  try {
+    const res = await fetch(`${process.env.BONITA_URL}/API/bpm/archivedCaseVariable?f=case_id=${caseId}&p=0&c=100`, {
+        headers: { Cookie: bonitaAuth.cookies, "X-Bonita-API-Token": bonitaAuth.token }
+    });
+    
+    if (!res.ok) return null;
+    
+    const vars = await res.json();
+    // La API de archivados devuelve una lista (historial). Validamos que sea array.
+    if (Array.isArray(vars) && vars.length > 0) {
+      let elementToreturn;
+        for (let index = 0; index < vars.length; index++) {
+          const element = vars[index];
+          if(element.name == varName ){
+            elementToreturn = element.value
+          }
+        }
+        for (let index = 0; index < vars.length; index++) {
+          const element = vars[index];
+          if(element.name == "id_proyecto_local" && Number(element.value) == localId  ){
+            return elementToreturn
+          }
+        }
+    }
+    return null;
+  } catch (error) {
+    console.error(`[Bonita] Error leyendo variable archivada ${varName}:`, error);
+    return null;
+  }
+}

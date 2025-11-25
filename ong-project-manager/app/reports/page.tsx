@@ -144,7 +144,7 @@ export default function ReportsPage() {
                           ) : (
                             <FileText className="mr-2 h-4 w-4" />
                           )}
-                          Generar Reporte Final
+                          Ver / Generar Reporte Final
                         </Button>
                       ) : (
                         <Button variant="secondary" disabled className="opacity-50 cursor-not-allowed">
