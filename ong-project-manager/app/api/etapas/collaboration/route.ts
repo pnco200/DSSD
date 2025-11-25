@@ -80,6 +80,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "id_etapa es requerido" }, { status: 400 })
     }
 
+    const [rowsEtapa] = await pool.query(
+      `SELECT id_proyecto FROM etapas WHERE id_etapa = ? AND id_ong_ejecutora = ? LIMIT 1`,
+      [id_etapa, user.id_ong],
+    )
+    const etapaRow = Array.isArray(rowsEtapa) && rowsEtapa.length ? (rowsEtapa as any)[0] : null
+    if (!etapaRow?.id_proyecto) {
+      return NextResponse.json({ error: "Etapa no encontrada o no pertenece a tu ONG" }, { status: 404 })
+    }
+    const id_proyecto = Number(etapaRow.id_proyecto)
+
     const [result] = await pool.query(
       `UPDATE etapas 
        SET is_completed = TRUE 
@@ -112,9 +122,31 @@ export async function PATCH(request: Request) {
     let targetCaseId: string | null = null
 
     if (ejecutaEtapaTasks.length) {
-      const task = ejecutaEtapaTasks[0]
-      targetTask = task
-      targetCaseId = String(task.rootCaseId ?? task.caseId ?? task.processInstanceId ?? "")
+      for (const task of ejecutaEtapaTasks) {
+        const candidateCaseId = String(task.rootCaseId ?? task.caseId ?? task.processInstanceId ?? "")
+        if (!candidateCaseId) continue
+        try {
+          const idProyectoCase = await getCaseVarJsonString({
+            cookies: bonitaAuth.cookies,
+            token: bonitaAuth.token,
+            caseId: candidateCaseId,
+            varName: "id_proyecto_local",
+          })
+          console.log("[Collaboration][PATCH] Check case", candidateCaseId, "id_proyecto_local =", idProyectoCase, "vs etapa id_proyecto", id_proyecto)
+          if (Number(idProyectoCase) === id_proyecto) {
+            targetTask = task
+            targetCaseId = candidateCaseId
+            break
+          }
+        } catch (err) {
+          console.warn("[Collaboration][PATCH] No se pudo leer id_proyecto_local del case", candidateCaseId, err)
+        }
+      }
+      if (!targetTask) {
+        const task = ejecutaEtapaTasks[0]
+        targetTask = task
+        targetCaseId = String(task.rootCaseId ?? task.caseId ?? task.processInstanceId ?? "")
+      }
     }
 
     if (!targetTask || !targetCaseId) {
