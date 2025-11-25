@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import pool from '@/lib/db';
 import { authUser, getTokenJWT } from "@/lib/auth";
-import { getBonitaAuth, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
+import { getBonitaAuth, setCaseVarInteger, setCaseVarJsonString, appendToInfoReporte } from "@/lib/bonita-utils";
 
 const BONITA_URL = process.env.BONITA_URL ?? "http://localhost:8080/bonita"
 // 🔁 Now we resolve the process by NAME, not fixed ID
@@ -238,6 +238,19 @@ export async function POST(request: Request) {
     const task = await findTaskByNameLoose({
       cookies: bonitaAuth.cookies, token: bonitaAuth.token, caseId: String(caseId), name: TASK_NAME, requireReady: true, retries: 8, delayMs: 250
     })
+
+    const logInicial = {
+      evento: "Creación de Proyecto",
+      proyecto: proyecto.nombre,
+      etapas_creadas: proyecto.etapas.map(e => e.nombre),
+      usuario_creador: usuario.username
+    };
+
+    await appendToInfoReporte({
+      bonitaAuth,
+      caseId,
+      logEntry: logInicial
+    });
 
     await assignTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: task.id, userId: bonitaAuth.session.user_id })
     await completeTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: task.id })

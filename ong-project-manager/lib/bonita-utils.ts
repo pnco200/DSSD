@@ -206,3 +206,75 @@ export async function setCaseVarJsonString({
     throw new Error(`No pude setear la variable '${varName}': ${err}`)
   }
 }
+
+// Agregar al final de lib/bonita-utils.ts
+
+// Busca un caso activo de Bonita que tenga la variable id_proyecto_local igual al id buscado
+export async function findCaseByLocalId(bonitaAuth: BonitaAuth, processName: string, localId: number) {
+  // 1. Obtener Process ID
+  const resProc = await fetch(`${process.env.BONITA_URL}/API/bpm/process?f=name=${encodeURIComponent(processName)}&o=version DESC&c=1`, {
+    headers: { Cookie: bonitaAuth.cookies, "X-Bonita-API-Token": bonitaAuth.token }
+  });
+  const procs = await resProc.json();
+  if (!procs.length) throw new Error("Proceso no encontrado");
+  const processId = procs[0].id;
+
+  // 2. Buscar cases activos
+  const resCases = await fetch(`${process.env.BONITA_URL}/API/bpm/case?f=processId=${processId}&p=0&c=100`, {
+    headers: { Cookie: bonitaAuth.cookies, "X-Bonita-API-Token": bonitaAuth.token }
+  });
+  const cases = await resCases.json();
+
+  // 3. Filtrar manualmente por variable (Bonita Community no deja filtrar por valor de variable en la API de búsqueda fácilmente)
+  for (const c of cases) {
+    try {
+      const val = await getCaseVarJsonString({
+        cookies: bonitaAuth.cookies,
+        token: bonitaAuth.token,
+        caseId: c.id,
+        varName: "id_proyecto_local"
+      });
+      // Comparamos string vs number
+      if (String(val) === String(localId)) return c.id;
+    } catch (e) { continue; }
+  }
+  return null;
+}
+
+// Helper para obtener, parsear, agregar info y guardar variable JSON
+export async function appendToInfoReporte({
+  bonitaAuth, caseId, logEntry
+}: { bonitaAuth: BonitaAuth, caseId: string, logEntry: any }) {
+  
+  let currentInfo = [];
+  try {
+    // Intentar leer variable existente
+    const raw = await getCaseVarJsonString({
+      cookies: bonitaAuth.cookies,
+      token: bonitaAuth.token,
+      caseId,
+      varName: "info_reporte"
+    });
+    if (raw) {
+      currentInfo = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    }
+  } catch (e) {
+    console.log("Variable info_reporte no existía, se creará nueva.");
+  }
+
+  if (!Array.isArray(currentInfo)) currentInfo = [];
+  
+  currentInfo.push({
+    timestamp: new Date().toISOString(),
+    ...logEntry
+  });
+
+  // Guardar
+  await setCaseVarJsonString({
+    cookies: bonitaAuth.cookies,
+    token: bonitaAuth.token,
+    caseId,
+    varName: "info_reporte",
+    value: currentInfo // setCaseVarJsonString ya hace el JSON.stringify si es objeto
+  });
+}

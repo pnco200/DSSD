@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assignTask, completeTask, getBonitaAuth, getCaseVarJsonString, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
+import { appendToInfoReporte, assignTask, completeTask, getBonitaAuth, getCaseVarJsonString, setCaseVarInteger, setCaseVarJsonString } from "@/lib/bonita-utils";
 import { authUser, getTokenJWT } from "@/lib/auth";
 import pool from '@/lib/db';
 
@@ -56,6 +56,16 @@ export async function POST(request: Request) {
       caseId: caseId,
       varName: "etapaIdAdjudicada",
       value: etapaId
+    });
+    await appendToInfoReporte({
+      bonitaAuth,
+      caseId,
+      logEntry: {
+        evento: "Adjudicación de Etapa",
+        etapa_id_local: etapaId,
+        ong_ejecutora: usuario.username, // O el nombre de la ONG si lo tienes disponible
+        id_ong: usuario.id_ong
+      }
     });
     await assignTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: taskId, userId: bonitaAuth.session.user_id })
     await completeTask({ cookies: bonitaAuth.cookies, token: bonitaAuth.token, taskId: taskId })

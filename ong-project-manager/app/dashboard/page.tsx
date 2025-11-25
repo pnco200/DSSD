@@ -12,7 +12,7 @@ export default function DashboardPage() {
     async function loadUser() {
       const res = await fetch('/api/auth/me', {
         method: 'GET',
-        credentials: 'include' 
+        credentials: 'include'
       })
 
       if (res.status === 401) {
@@ -27,7 +27,7 @@ export default function DashboardPage() {
     loadUser()
   }, [router])
 
- const handleLogout = async () => {
+  const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-      
+
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -54,14 +54,14 @@ export default function DashboardPage() {
               <p className="text-gray-600 mt-1">
                 Bienvenido, <span className="font-semibold">{user?.username}</span>
               </p>
-             
+
               {user?.es_gerente ? (
                 <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
                   Acceso de Gerente
                 </span>
               ) : null}
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -72,7 +72,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Link 
+          <Link
             href="/projects/newProject"
             className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow"
           >
@@ -104,22 +104,25 @@ export default function DashboardPage() {
               Ver y gestionar etapas en las que soy colaborador
             </p>
           </Link>
-           <Link
+          <Link
             href="/stages/available"
             className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow"
           >
             <h3 className="text-xl font-semibold mb-2">Etapas para colaboracion</h3>
             <p className="text-muted-foreground">
-              Ver etapas disponibles para colaboracion 
+              Ver etapas disponibles para colaboracion
             </p>
           </Link>
           {user?.es_gerente ? (
-            <div className="bg-card rounded-lg border shadow-sm p-6 md:col-span-2">
+            <Link
+              href="/reports"
+              className="bg-card rounded-lg border shadow-sm p-6 md:col-span-2 hover:shadow-md transition-shadow cursor-pointer block"
+            >
               <h3 className="text-xl font-semibold mb-2">Reportes Gerenciales</h3>
               <p className="text-muted-foreground">
-                Acceso a reportes de control y monitoreo
+                Acceso a reportes de control y monitoreo. Generar reportes de proyectos finalizados.
               </p>
-            </div>
+            </Link>
           ) : null}
         </div>
       </div>
