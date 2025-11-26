@@ -155,7 +155,9 @@ export async function GET(request: Request) {
         FROM etapas e
         INNER JOIN proyectos p ON p.id_proyecto = e.id_proyecto
         LEFT JOIN ongs ong ON ong.id_ong = e.id_ong_ejecutora
-        WHERE e.id_ong_ejecutora IS NULL OR e.id_ong_ejecutora <> ?
+        WHERE e.id_ong_ejecutora IS NOT NULL
+          AND e.id_ong_ejecutora <> ?
+          AND p.en_ejecucion = TRUE
         ORDER BY p.nombre, e.nombre
         `,
         [user.id_ong],
