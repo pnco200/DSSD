@@ -1,5 +1,9 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 interface Etapa {
@@ -23,6 +27,7 @@ interface Etapa {
 export default function AvailableStagesPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   // ELIMINAMOS taskId y caseId globales
   const [error, setError] = useState<string | null>(null);
 
@@ -83,14 +88,9 @@ export default function AvailableStagesPage() {
       const result = await response.json();
       if (result.success) {
         alert(`¡Éxito! Ahora estás colaborando en: ${etapa.nombre}`);
-        // 1. Recargar lista localmente
-        await loadAvailableEtapas();
-
-        // 2. Delay de 3 segundos
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // 3. Refresh completo de la página
-        window.location.reload();
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 500); // Pequeño delay para que el usuario vea el mensaje
       } else {
         throw new Error(result.error);
       }
@@ -106,9 +106,14 @@ export default function AvailableStagesPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
+        <Button asChild variant="outline">
+            <Link href="/dashboard">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+            </Link>
+          </Button>
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Etapas Disponibles</h1>
-
+          <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">Etapas Disponibles</h1>
+          
           {etapas.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg shadow">
               <p className="text-gray-500">No hay etapas disponibles.</p>
