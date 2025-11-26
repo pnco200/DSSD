@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 
 type StageItem = {
   id_proyecto: number
@@ -36,6 +37,8 @@ export default function CollaborationStagesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
+  const [uiBlocked, setUiBlocked] = useState(false)
+  const blockingRef = useRef(false)
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
@@ -94,8 +97,11 @@ export default function CollaborationStagesPage() {
   }
 
   const completeStage = async (id_etapa: number) => {
+    if (blockingRef.current) return
     setError(null)
     setCompletingId(id_etapa)
+    setUiBlocked(true)
+    blockingRef.current = true
     try {
       const res = await fetch("/api/etapas/collaboration", {
         method: "PATCH",
@@ -113,13 +119,28 @@ export default function CollaborationStagesPage() {
       setError(err?.message ?? "Error al completar la etapa.")
     } finally {
       setCompletingId(null)
+      setUiBlocked(false)
+      blockingRef.current = false
     }
   }
 
   const completedCount = useMemo(() => stages.filter((stage) => stage.is_completed).length, [stages])
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8" aria-busy={uiBlocked}>
+      {uiBlocked && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-lg">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-foreground">Sincronizando...</span>
+              <span className="text-xs text-muted-foreground">
+                Espera a que finalice el marcado para continuar con otras etapas.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground uppercase tracking-wide">Panel de colaboracion</p>
@@ -196,7 +217,7 @@ export default function CollaborationStagesPage() {
                       <Button
                         size="sm"
                         onClick={() => completeStage(stage.id_etapa)}
-                        disabled={completingId === stage.id_etapa || !stage.en_ejecucion}
+                        disabled={uiBlocked || completingId === stage.id_etapa || !stage.en_ejecucion}
                         variant={!stage.en_ejecucion ? "secondary" : "default"}
                         className={!stage.en_ejecucion ? "bg-gray-200 text-gray-600 hover:bg-gray-200" : ""}
                       >
